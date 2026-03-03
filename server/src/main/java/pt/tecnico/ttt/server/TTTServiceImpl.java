@@ -1,5 +1,6 @@
 package pt.tecnico.ttt.server;
 
+import static io.grpc.Status.INVALID_ARGUMENT;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.ttt.*;
 
@@ -32,7 +33,22 @@ public class TTTServiceImpl extends TTTGrpc.TTTImplBase {
 				request.getPlayer()
 				);
 
-		response = PlayResponse.newBuilder().setPlayResult(playResult).build();
+		if(playResult == PlayResult.OUT_OF_BOUNDS) {
+			responseObserver.onError(INVALID_ARGUMENT.withDescription("Play out of bounds!").asRuntimeException());
+		} else {
+			response = PlayResponse.newBuilder().setPlayResult(playResult).build();
+
+			// Send a single response through the stream.
+			responseObserver.onNext(response);
+			// Notify the client that the operation has been completed.
+			responseObserver.onCompleted();
+		}
+
+	}
+
+	@Override
+	public void checkWinner(CheckWinnerRequest request, StreamObserver<CheckWinnerResponse> responseObserver) {
+		CheckWinnerResponse response = CheckWinnerResponse.newBuilder().setWinner(ttt.checkWinner()).build();
 
 		// Send a single response through the stream.
 		responseObserver.onNext(response);
@@ -41,8 +57,8 @@ public class TTTServiceImpl extends TTTGrpc.TTTImplBase {
 	}
 
 	@Override
-	public void checkWinner(CheckWinnerRequest request, StreamObserver<CheckWinnerResponse> responseObserver) {
-		CheckWinnerResponse response = CheckWinnerResponse.newBuilder().setWinner(ttt.checkWinner()).build();
+	public void waitForWinner(WaitForWinnerRequest request, StreamObserver<WaitForWinnerResponse> responseObserver) {
+		WaitForWinnerResponse response = WaitForWinnerResponse.newBuilder().setWinner(ttt.waitForWinner()).build();
 
 		// Send a single response through the stream.
 		responseObserver.onNext(response);

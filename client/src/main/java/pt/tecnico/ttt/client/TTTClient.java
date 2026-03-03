@@ -2,6 +2,7 @@ package pt.tecnico.ttt.client;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
 import pt.tecnico.ttt.*;
 import pt.tecnico.ttt.PlayResult;
 
@@ -71,6 +72,13 @@ public class TTTClient {
 		 */
 		try (Scanner scanner = new Scanner(System.in)) {
 
+			System.out.printf("0 for playing, 1 for waiting winner: ");
+			Integer wait = scanner.nextInt();
+
+			if(wait==1) {
+				winner = (stub.waitForWinner(WaitForWinnerRequest.newBuilder().build()).getWinner());
+			} else {
+
 			/* The main game loop. The game continues for up to 9 turns, */
 			/* as long as there is no winner. */
 			do {
@@ -88,8 +96,11 @@ public class TTTClient {
 					debug("go = " + go);
 
 					if (go == 0) {
-						play_res = PlayResult.UNKNOWN;
-						continue;
+						WaitForWinnerRequest waitForWinnerRequest =
+							WaitForWinnerRequest.newBuilder().build();
+						WaitForWinnerResponse response = stub.waitForWinner(waitForWinnerRequest);
+						System.out.println(response);
+						return;
 					}
 
 					/* Get row index of board. */
@@ -106,7 +117,12 @@ public class TTTClient {
 						.setPlayer(player)
 						.build();
 
-					PlayResponse playResponse = stub.play(playRequest);
+					PlayResponse playResponse = null;
+					try {
+						playResponse = stub.play(playRequest);
+					} catch(StatusRuntimeException e) {
+						System.out.println("Exception caught:" + e.getStatus().getDescription());
+					}
 
 					play_res = playResponse.getPlayResult();
 
@@ -120,6 +136,7 @@ public class TTTClient {
 				debug("player " + player);
 
 			} while (winner == -1);
+			}
 
 			/* Game is over so display the final board. */
 			debug("Call currentBoard");
